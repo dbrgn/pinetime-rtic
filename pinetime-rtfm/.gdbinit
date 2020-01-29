@@ -1,8 +1,11 @@
-target remote :3333
+#target remote :3333
+#set arm force-mode thumb
+#monitor arm semihosting enable
+#load
+#step
 
-set arm force-mode thumb
-
-monitor arm semihosting enable
-
+target remote :2331
+set backtrace limit 32
+monitor semihosting enable
 load
-step
+break main
