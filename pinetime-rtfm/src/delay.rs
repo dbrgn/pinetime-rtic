@@ -25,7 +25,7 @@ impl TimerDelay {
 impl DelayUs<u32> for TimerDelay {
     fn delay_us(&mut self, us: u32) {
         // Currently the HAL timer is hardcoded at 1 MHz,
-        // so 1 cycle = 1 cycle.
+        // so 1 cycle = 1 µs.
         let cycles = us;
         self.timer.delay(cycles);
     }
