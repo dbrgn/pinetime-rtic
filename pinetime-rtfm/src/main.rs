@@ -18,6 +18,8 @@ use nrf52832_hal::prelude::*;
 use rtfm::app;
 use st7789::{self, Orientation};
 
+mod delay;
+
 static LCD_WIDTH: u16 = 240;
 static LCD_HEIGHT: u16 = 240;
 
@@ -31,8 +33,17 @@ const APP: () = {
         // Set up clocks
         let _clocks = hal::clocks::Clocks::new(dp.CLOCK);
 
+        // Set up delay timer
+        let delay = delay::TimerDelay::new(dp.TIMER0);
+
         // Set up GPIO peripheral
         let gpio = hal::gpio::p0::Parts::new(dp.P0);
+
+        // Enable backlight
+        let _backlight_low = gpio.p0_14.into_push_pull_output(Level::High);
+        let _backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
+        let mut backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
+        backlight_high.set_low().unwrap();
 
         // Set up SPI pins
         let spi_clk = gpio.p0_02.into_push_pull_output(Level::Low).degrade();
@@ -64,10 +75,6 @@ const APP: () = {
             0,
         );
 
-
-        // Get delay provider
-        let delay = hal::delay::Delay::new(p.SYST);
-
         // Chip select must be held low while driving the display. It must be high
         // when using other SPI devices on the same bus (such as external flash
         // storage) so that the display controller won't respond to the wrong
@@ -78,12 +85,6 @@ const APP: () = {
         let mut lcd = st7789::ST7789::new(spi, lcd_dc, lcd_rst, LCD_WIDTH, LCD_HEIGHT, delay);
         lcd.init().unwrap();
         lcd.set_orientation(&Orientation::Portrait).unwrap();
-
-        // Enable backlight
-        let _backlight_low = gpio.p0_14.into_push_pull_output(Level::High);
-        let _backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
-        let mut backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
-        backlight_high.set_low().unwrap();
 
         // Draw something onto the LCD
         let backdrop_style = PrimitiveStyleBuilder::new()
