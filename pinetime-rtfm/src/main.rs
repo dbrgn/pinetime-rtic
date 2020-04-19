@@ -23,26 +23,46 @@ use st7789::{self, Orientation};
 
 mod delay;
 
-static LCD_WIDTH: u16 = 240;
-static LCD_HEIGHT: u16 = 240;
+const LCD_W: u16 = 240;
+const LCD_H: u16 = 240;
+
+const FERRIS_W: u16 = 86;
+const FERRIS_H: u16 = 64;
+const FERRIS_Y_OFFSET: u16 = 80;
+
+const MARGIN: u16 = 10;
+
+const BACKGROUND_COLOR: Rgb565 = Rgb565::new(0, 0b000111, 0);
 
 const CLOCK_FREQUENCY: u32 = 64_000_000;
 
 #[app(device = nrf52832_hal::pac, peripherals = true, monotonic = rtfm::cyccnt::CYCCNT)]
 const APP: () = {
     struct Resources {
+        // LCD
         lcd: st7789::ST7789<
             hal::spim::Spim<pac::SPIM1>,
             p0::P0_18<Output<PushPull>>,
             p0::P0_26<Output<PushPull>>,
             delay::TimerDelay,
         >,
+
+        // Styles
         text_style: TextStyleBuilder<Rgb565, Font12x16>,
+
+        // Counter resources
         #[init(0)]
         counter: usize,
+
+        // Ferris resources
+        ferris: ImageRawLE<'static, Rgb565>,
+        #[init(10)]
+        ferris_x_offset: i32,
+        #[init(2)]
+        ferris_step_size: i32,
     }
 
-    #[init(spawn = [write_counter])]
+    #[init(spawn = [write_counter, write_ferris])]
     fn init(cx: init::Context) -> init::LateResources {
         let _p = cx.core;
         let dp = cx.device;
@@ -103,29 +123,23 @@ const APP: () = {
         lcd_cs.set_low().unwrap();
 
         // Initialize LCD
-        let mut lcd = st7789::ST7789::new(spi, lcd_dc, lcd_rst, LCD_WIDTH, LCD_HEIGHT, delay);
+        let mut lcd = st7789::ST7789::new(spi, lcd_dc, lcd_rst, LCD_W, LCD_H, delay);
         lcd.init().unwrap();
         lcd.set_orientation(&Orientation::Portrait).unwrap();
 
         // Draw something onto the LCD
-        let background_color = Rgb565::new(0, 0b000111, 0);
         let backdrop_style = PrimitiveStyleBuilder::new()
-            .fill_color(background_color)
+            .fill_color(BACKGROUND_COLOR)
             .build();
-        let backdrop = Rectangle::new(
-            Point::new(0, 0),
-            Point::new(LCD_WIDTH as i32, LCD_HEIGHT as i32),
-        )
-        .into_styled(backdrop_style);
-        backdrop.draw(&mut lcd).unwrap();
-        let ferris_data = ImageRawLE::new(include_bytes!("../ferris.raw"), 86, 64);
-        let ferris = Image::new(&ferris_data, Point::new(100, 80));
-        ferris.draw(&mut lcd).unwrap();
+        Rectangle::new(Point::new(0, 0), Point::new(LCD_W as i32, LCD_H as i32))
+            .into_styled(backdrop_style)
+            .draw(&mut lcd)
+            .unwrap();
 
         // Choose text style
         let text_style = TextStyleBuilder::new(Font12x16)
             .text_color(Rgb565::WHITE)
-            .background_color(background_color);
+            .background_color(BACKGROUND_COLOR);
 
         // Draw text
         Text::new("Hello world!", Point::new(10, 10))
@@ -133,10 +147,82 @@ const APP: () = {
             .draw(&mut lcd)
             .unwrap();
 
-        // Schedule counter task immediately
-        cx.spawn.write_counter().unwrap();
+        // Load ferris image data
+        let ferris = ImageRawLE::new(
+            include_bytes!("../ferris.raw"),
+            FERRIS_W as u32,
+            FERRIS_H as u32,
+        );
 
-        init::LateResources { lcd, text_style }
+        // Schedule tasks immediately
+        cx.spawn.write_counter().unwrap();
+        cx.spawn.write_ferris().unwrap();
+
+        init::LateResources {
+            lcd,
+            text_style,
+            ferris,
+        }
+    }
+
+    #[task(resources = [lcd, ferris, ferris_x_offset, ferris_step_size], schedule = [write_ferris])]
+    fn write_ferris(cx: write_ferris::Context) {
+        // Draw ferris
+        Image::new(
+            &cx.resources.ferris,
+            Point::new(*cx.resources.ferris_x_offset, FERRIS_Y_OFFSET as i32),
+        )
+        .draw(cx.resources.lcd)
+        .unwrap();
+
+        // Clean up behind ferris
+        let backdrop_style = PrimitiveStyleBuilder::new()
+            .fill_color(BACKGROUND_COLOR)
+            .build();
+        let (p1, p2) = if *cx.resources.ferris_step_size > 0 {
+            // Clean up to the left
+            (
+                Point::new(
+                    *cx.resources.ferris_x_offset - *cx.resources.ferris_step_size,
+                    FERRIS_Y_OFFSET as i32,
+                ),
+                Point::new(
+                    *cx.resources.ferris_x_offset,
+                    (FERRIS_Y_OFFSET + FERRIS_H) as i32,
+                ),
+            )
+        } else {
+            // Clean up to the right
+            (
+                Point::new(
+                    *cx.resources.ferris_x_offset + FERRIS_W as i32,
+                    FERRIS_Y_OFFSET as i32,
+                ),
+                Point::new(
+                    *cx.resources.ferris_x_offset
+                        + FERRIS_W as i32
+                        - *cx.resources.ferris_step_size,
+                    (FERRIS_Y_OFFSET + FERRIS_H) as i32,
+                ),
+            )
+        };
+        Rectangle::new(p1, p2)
+            .into_styled(backdrop_style)
+            .draw(cx.resources.lcd)
+            .unwrap();
+
+        // Reset step size
+        if *cx.resources.ferris_x_offset as u16 > LCD_W - FERRIS_W - MARGIN {
+            *cx.resources.ferris_step_size = -*cx.resources.ferris_step_size;
+        } else if (*cx.resources.ferris_x_offset as u16) < MARGIN {
+            *cx.resources.ferris_step_size = -*cx.resources.ferris_step_size;
+        }
+        *cx.resources.ferris_x_offset += *cx.resources.ferris_step_size;
+
+        // Re-schedule the timer interrupt
+        cx.schedule
+            .write_ferris(cx.scheduled + (CLOCK_FREQUENCY / 25).cycles())
+            .unwrap();
     }
 
     #[task(resources = [lcd, text_style, counter], schedule = [write_counter])]
@@ -144,7 +230,7 @@ const APP: () = {
         // Write counter to the display
         let mut buf = [0u8; 20];
         let text = cx.resources.counter.numtoa_str(10, &mut buf);
-        Text::new(text, Point::new(10, LCD_HEIGHT as i32 - 10 - 16))
+        Text::new(text, Point::new(10, LCD_H as i32 - 10 - 16))
             .into_styled(cx.resources.text_style.build())
             .draw(cx.resources.lcd)
             .unwrap();

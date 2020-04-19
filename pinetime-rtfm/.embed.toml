@@ -7,6 +7,3 @@ restore_unwritten_bytes = false
 
 [general]
 chip = "nrf52832_xxAA"
-
-[rtt]
-enabled = true
