@@ -18,6 +18,7 @@ use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
 use rtfm::app;
 use rtfm::cyccnt::U32Ext;
+use rtt_target::{rprintln, rtt_init_print};
 use st7789::{self, Orientation};
 
 mod delay;
@@ -45,6 +46,10 @@ const APP: () = {
     fn init(cx: init::Context) -> init::LateResources {
         let _p = cx.core;
         let dp = cx.device;
+
+        // Init RTT
+        rtt_init_print!();
+        rprintln!("Initializing…");
 
         // Set up clocks
         let _clocks = hal::clocks::Clocks::new(dp.CLOCK);

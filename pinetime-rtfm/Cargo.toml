@@ -12,6 +12,7 @@ embedded-graphics = "0.6"
 embedded-hal = "0.2"
 numtoa = "0.2"
 panic-semihosting = "0.5"
+rtt-target = { version = "0.1", features = ["cortex-m"] }
 st7789 = { version = "0.2", features = ["graphics", "batch", "buffer"], default-features = false }
 
 [dependencies.nrf52832-hal]
