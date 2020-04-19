@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 cortex-m = "0.6"
 cortex-m-rt = "0.6"
+cortex-m-rtfm = "0.5.1"
 embedded-graphics = "0.6"
 panic-semihosting = "0.5"
 st7789 = { version = "0.2", features = ["graphics", "batch", "buffer"], default-features = false }
