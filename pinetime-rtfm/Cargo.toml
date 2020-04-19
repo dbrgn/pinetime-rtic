@@ -7,9 +7,9 @@ edition = "2018"
 [dependencies]
 cortex-m = "0.6"
 cortex-m-rt = "0.6"
-embedded-graphics = "0.5"
+embedded-graphics = "0.6"
 panic-semihosting = "0.5"
-st7735-lcd = "0.6.2"
+st7789 = { version = "0.2", features = ["graphics", "batch", "buffer"], default-features = false }
 
 [dependencies.nrf52832-hal]
 git = "https://github.com/nrf-rs/nrf52-hal/"

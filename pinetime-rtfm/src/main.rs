@@ -6,16 +6,20 @@ use panic_semihosting;
 
 use cortex_m::asm;
 use cortex_m_rt::entry;
-use embedded_graphics::image::Image16BPP;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::rectangle::Rectangle;
+use embedded_graphics::{
+    image::{Image, ImageRaw},
+    pixelcolor::Rgb565,
+    primitives::rectangle::Rectangle,
+    style::PrimitiveStyleBuilder,
+};
 use nrf52832_hal::{self as hal, pac};
 use nrf52832_hal::gpio::Level;
 use nrf52832_hal::prelude::*;
-use st7735_lcd::{self, Orientation};
+use st7789::{self, Orientation};
 
-static LCD_WIDTH: i32 = 240;
-static LCD_HEIGHT: i32 = 240;
+static LCD_WIDTH: u16 = 240;
+static LCD_HEIGHT: u16 = 240;
 
 #[entry]
 fn main() -> ! {
@@ -60,7 +64,7 @@ fn main() -> ! {
 
 
     // Get delay provider
-    let mut delay = hal::delay::Delay::new(p.SYST);
+    let delay = hal::delay::Delay::new(p.SYST);
 
     // Chip select must be held low while driving the display. It must be high
     // when using other SPI devices on the same bus (such as external flash
@@ -69,9 +73,9 @@ fn main() -> ! {
     lcd_cs.set_low().unwrap();
 
     // Initialize LCD
-    let mut lcd = st7735_lcd::ST7735::new(spi, lcd_dc, lcd_rst, false, true);
-    lcd.init(&mut delay).unwrap();
-    lcd.set_orientation(&Orientation::Landscape).unwrap();
+    let mut lcd = st7789::ST7789::new(spi, lcd_dc, lcd_rst, LCD_WIDTH, LCD_HEIGHT, delay);
+    lcd.init().unwrap();
+    lcd.set_orientation(&Orientation::Portrait).unwrap();
 
     // Enable backlight
     let _backlight_low = gpio.p0_14.into_push_pull_output(Level::High);
@@ -80,14 +84,17 @@ fn main() -> ! {
     backlight_high.set_low().unwrap();
 
     // Draw something onto the LCD
-    let black_backdrop = Rectangle::new(
-        Coord::new(0, 0),
-        Coord::new(LCD_WIDTH, LCD_HEIGHT),
-    ).fill(Some(0b00010_00000_01000u16.into()));
-    lcd.draw(black_backdrop.into_iter());
-    let ferris = Image16BPP::new(include_bytes!("../ferris.raw"), 86, 64)
-        .translate(Coord::new(40, 33));
-    lcd.draw(ferris.into_iter());
+    let backdrop_style = PrimitiveStyleBuilder::new()
+        .fill_color(Rgb565::BLUE)
+        .build();
+    let backdrop = Rectangle::new(
+        Point::new(0, 0),
+        Point::new(LCD_WIDTH as i32, LCD_HEIGHT as i32),
+    ).into_styled(backdrop_style);
+    backdrop.draw(&mut lcd).unwrap();
+    let ferris_data: ImageRaw<Rgb565> = ImageRaw::new(include_bytes!("../ferris.raw"), 86, 64);
+    let ferris: Image<_, Rgb565> = Image::new(&ferris_data, Point::new(100, 80));
+    ferris.draw(&mut lcd).unwrap();
 
     loop {
         asm::nop();
