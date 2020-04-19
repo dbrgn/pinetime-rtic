@@ -1,0 +1,9 @@
+[probe]
+protocol = "Swd"
+
+[flashing]
+enabled = true
+restore_unwritten_bytes = false
+
+[general]
+chip = "nrf52832_xxAA"

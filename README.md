@@ -4,15 +4,15 @@ Target MCU: nRF52832 (xxAA)
 
 Current status: PoC
 
-## Flashing (cargo-flash)
+## Flashing (cargo-embed)
 
-Install cargo-flash:
+Install cargo-embed:
 
-    $ cargo install -f cargo-flash
+    $ cargo install -f --git https://github.com/dbrgn/cargo-embed/ --branch config-improvements
 
 Flash the target:
 
-    $ cargo flash --chip nrf52832_xxAA
+    $ cargo embed
 
 ## Flashing (openocd)
 
