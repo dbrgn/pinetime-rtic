@@ -10,6 +10,7 @@ cortex-m-rt = "0.6"
 cortex-m-rtfm = "0.5.1"
 embedded-graphics = "0.6"
 embedded-hal = "0.2"
+numtoa = "0.2"
 panic-semihosting = "0.5"
 st7789 = { version = "0.2", features = ["graphics", "batch", "buffer"], default-features = false }
 

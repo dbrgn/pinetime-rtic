@@ -12,10 +12,12 @@ use embedded_graphics::{
     primitives::rectangle::Rectangle,
     style::{PrimitiveStyleBuilder, TextStyleBuilder},
 };
-use nrf52832_hal::{self as hal};
-use nrf52832_hal::gpio::Level;
+use nrf52832_hal::{self as hal, pac};
+use nrf52832_hal::gpio::{Level, Output, PushPull, p0};
 use nrf52832_hal::prelude::*;
+use numtoa::NumToA;
 use rtfm::app;
+use rtfm::cyccnt::U32Ext;
 use st7789::{self, Orientation};
 
 mod delay;
@@ -23,11 +25,25 @@ mod delay;
 static LCD_WIDTH: u16 = 240;
 static LCD_HEIGHT: u16 = 240;
 
-#[app(device = nrf52832_hal::pac, peripherals = true)]
+const CLOCK_FREQUENCY: u32 = 64_000_000;
+
+#[app(device = nrf52832_hal::pac, peripherals = true, monotonic = rtfm::cyccnt::CYCCNT)]
 const APP: () = {
-    #[init]
-    fn init(cx: init::Context) {
-        let p = cx.core;
+    struct Resources {
+        lcd: st7789::ST7789<
+            hal::spim::Spim<pac::SPIM1>,
+            p0::P0_18<Output<PushPull>>,
+            p0::P0_26<Output<PushPull>>,
+            delay::TimerDelay,
+        >,
+        text_style: TextStyleBuilder<Rgb565, Font12x16>,
+        #[init(0)]
+        counter: usize,
+    }
+
+    #[init(spawn = [write_counter])]
+    fn init(cx: init::Context) -> init::LateResources {
+        let _p = cx.core;
         let dp = cx.device;
 
         // Set up clocks
@@ -87,8 +103,9 @@ const APP: () = {
         lcd.set_orientation(&Orientation::Portrait).unwrap();
 
         // Draw something onto the LCD
+        let background_color = Rgb565::new(0, 0b000111, 0);
         let backdrop_style = PrimitiveStyleBuilder::new()
-            .fill_color(Rgb565::new(0, 0b000111, 0))
+            .fill_color(background_color)
             .build();
         let backdrop = Rectangle::new(
             Point::new(0, 0),
@@ -102,12 +119,49 @@ const APP: () = {
         // Choose text style
         let text_style = TextStyleBuilder::new(Font12x16)
             .text_color(Rgb565::WHITE)
-            .build();
+            .background_color(background_color);
 
         // Draw text
         Text::new("Hello world!", Point::new(10, 10))
-            .into_styled(text_style)
+            .into_styled(text_style.build())
             .draw(&mut lcd)
             .unwrap();
+
+        // Schedule counter task immediately
+        cx.spawn.write_counter().unwrap();
+
+        init::LateResources {
+            lcd,
+            text_style,
+        }
+    }
+
+    #[task(resources = [lcd, text_style, counter], schedule = [write_counter])]
+    fn write_counter(cx: write_counter::Context) {
+        // Write counter to the display
+        let mut buf = [0u8; 20];
+        let text = cx.resources.counter.numtoa_str(10, &mut buf);
+        Text::new(text, Point::new(10, LCD_HEIGHT as i32 - 10 - 16))
+            .into_styled(cx.resources.text_style.build())
+            .draw(cx.resources.lcd)
+            .unwrap();
+
+        // Increment counter
+        *cx.resources.counter += 1;
+
+        // Re-schedule the timer interrupt
+        cx.schedule
+            .write_counter(cx.scheduled + CLOCK_FREQUENCY.cycles())
+            .unwrap();
+    }
+
+    // Provide unused interrupts to RTFM for its scheduling
+    extern "C" {
+        fn SWI0_EGU0();
+        fn SWI1_EGU1();
+        fn SWI2_EGU2();
+        fn SWI3_EGU3();
+        fn SWI4_EGU4();
+        fn SWI5_EGU5();
     }
 };
