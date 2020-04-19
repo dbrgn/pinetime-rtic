@@ -4,7 +4,24 @@ Target MCU: nRF52832 (xxAA)
 
 Current status: PoC
 
-## Flashing (cargo-embed)
+![img](ferris.gif)
+
+What works:
+
+- Bare-metal Rust with [nrf52-hal](https://github.com/nrf-rs/nrf-hal)
+- [RTFM](https://rtfm.rs/) for concurrency
+- [embedded-graphics](https://github.com/jamwaffles/embedded-graphics) for drawing onto the LCD
+
+Planned:
+
+- A simple watch interface
+- Support for the step counter
+- Support for Bluetooth using [rubble](https://github.com/jonas-schievink/rubble),
+  an experimental pure-rust BLE stack
+
+## Development
+
+### Flashing (cargo-embed)
 
 Install cargo-embed:
 
@@ -12,9 +29,9 @@ Install cargo-embed:
 
 Flash the target:
 
-    $ cargo embed
+    $ cargo embed --release
 
-## Flashing (openocd)
+### Flashing (openocd)
 
 Run OpenOCD:
 
@@ -24,7 +41,7 @@ Run the code
 
     $ cargo run [--release]
 
-## Flashing (J-Link GDB Server)
+### Flashing (J-Link GDB Server)
 
 Run JLinkGDBServer:
 
