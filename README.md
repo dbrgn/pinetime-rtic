@@ -8,7 +8,7 @@ Current status: PoC
 
 Install cargo-embed:
 
-    $ cargo install -f --git https://github.com/dbrgn/cargo-embed/ --branch config-improvements
+    $ cargo install -f --git https://github.com/probe-rs/cargo-embed/
 
 Flash the target:
 
