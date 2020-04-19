@@ -8,7 +8,7 @@ use cortex_m::asm;
 use cortex_m_rt::entry;
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
-    image::{Image, ImageRaw},
+    image::{Image, ImageRawLE},
     pixelcolor::Rgb565,
     primitives::rectangle::Rectangle,
     style::PrimitiveStyleBuilder,
@@ -92,8 +92,8 @@ fn main() -> ! {
         Point::new(LCD_WIDTH as i32, LCD_HEIGHT as i32),
     ).into_styled(backdrop_style);
     backdrop.draw(&mut lcd).unwrap();
-    let ferris_data: ImageRaw<Rgb565> = ImageRaw::new(include_bytes!("../ferris.raw"), 86, 64);
-    let ferris: Image<_, Rgb565> = Image::new(&ferris_data, Point::new(100, 80));
+    let ferris_data = ImageRawLE::new(include_bytes!("../ferris.raw"), 86, 64);
+    let ferris = Image::new(&ferris_data, Point::new(100, 80));
     ferris.draw(&mut lcd).unwrap();
 
     loop {
