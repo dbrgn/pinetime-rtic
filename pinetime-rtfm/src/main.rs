@@ -12,9 +12,9 @@ use embedded_graphics::{
     primitives::rectangle::Rectangle,
     style::{PrimitiveStyleBuilder, TextStyleBuilder},
 };
-use nrf52832_hal::{self as hal, pac};
-use nrf52832_hal::gpio::{Level, Output, PushPull, p0};
+use nrf52832_hal::gpio::{p0, Level, Output, PushPull};
 use nrf52832_hal::prelude::*;
+use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
 use rtfm::app;
 use rtfm::cyccnt::U32Ext;
@@ -110,7 +110,8 @@ const APP: () = {
         let backdrop = Rectangle::new(
             Point::new(0, 0),
             Point::new(LCD_WIDTH as i32, LCD_HEIGHT as i32),
-        ).into_styled(backdrop_style);
+        )
+        .into_styled(backdrop_style);
         backdrop.draw(&mut lcd).unwrap();
         let ferris_data = ImageRawLE::new(include_bytes!("../ferris.raw"), 86, 64);
         let ferris = Image::new(&ferris_data, Point::new(100, 80));
@@ -130,10 +131,7 @@ const APP: () = {
         // Schedule counter task immediately
         cx.spawn.write_counter().unwrap();
 
-        init::LateResources {
-            lcd,
-            text_style,
-        }
+        init::LateResources { lcd, text_style }
     }
 
     #[task(resources = [lcd, text_style, counter], schedule = [write_counter])]
