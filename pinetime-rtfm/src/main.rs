@@ -4,13 +4,13 @@
 #[allow(unused_imports)]
 use panic_semihosting;
 
-use cortex_m::asm;
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
+    fonts::{Font12x16, Text},
     image::{Image, ImageRawLE},
     pixelcolor::Rgb565,
     primitives::rectangle::Rectangle,
-    style::PrimitiveStyleBuilder,
+    style::{PrimitiveStyleBuilder, TextStyleBuilder},
 };
 use nrf52832_hal::{self as hal};
 use nrf52832_hal::gpio::Level;
@@ -87,7 +87,7 @@ const APP: () = {
 
         // Draw something onto the LCD
         let backdrop_style = PrimitiveStyleBuilder::new()
-            .fill_color(Rgb565::GREEN)
+            .fill_color(Rgb565::new(0, 0b000111, 0))
             .build();
         let backdrop = Rectangle::new(
             Point::new(0, 0),
@@ -98,8 +98,15 @@ const APP: () = {
         let ferris = Image::new(&ferris_data, Point::new(100, 80));
         ferris.draw(&mut lcd).unwrap();
 
-        loop {
-            asm::nop();
-        }
+        // Choose text style
+        let text_style = TextStyleBuilder::new(Font12x16)
+            .text_color(Rgb565::WHITE)
+            .build();
+
+        // Draw text
+        Text::new("Hello world!", Point::new(10, 10))
+            .into_styled(text_style)
+            .draw(&mut lcd)
+            .unwrap();
     }
 };
