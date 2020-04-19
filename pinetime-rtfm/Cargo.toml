@@ -16,3 +16,11 @@ git = "https://github.com/nrf-rs/nrf52-hal/"
 branch = "master"
 features = ["rt", "xxAA-package"]
 default-features = false
+
+[profile.dev]
+codegen-units = 1
+
+[profile.release]
+lto = true
+debug = true
+codegen-units = 1
