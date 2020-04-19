@@ -1,7 +1,4 @@
-# OpenOCD
-#target remote :3333
-# JLinkGDBServerExe
-target remote :2331
+target remote :3333
 
 # General config
 set backtrace limit 32

@@ -7,5 +7,6 @@ JLinkGDBServerExe \
     -endian little \
     -if SWD \
     -speed 4000 \
+    -port 3333 \
     -noir \
     -LocalhostOnly
