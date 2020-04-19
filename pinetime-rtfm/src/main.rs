@@ -73,6 +73,12 @@ fn main() -> ! {
     lcd.init(&mut delay).unwrap();
     lcd.set_orientation(&Orientation::Landscape).unwrap();
 
+    // Enable backlight
+    let _backlight_low = gpio.p0_14.into_push_pull_output(Level::High);
+    let _backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
+    let mut backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
+    backlight_high.set_low().unwrap();
+
     // Draw something onto the LCD
     let black_backdrop = Rectangle::new(
         Coord::new(0, 0),
@@ -82,12 +88,6 @@ fn main() -> ! {
     let ferris = Image16BPP::new(include_bytes!("../ferris.raw"), 86, 64)
         .translate(Coord::new(40, 33));
     lcd.draw(ferris.into_iter());
-
-    // Enable backlight
-    let _backlight_low = gpio.p0_14.into_push_pull_output(Level::High);
-    let _backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
-    let mut backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
-    backlight_high.set_low().unwrap();
 
     loop {
         asm::nop();
