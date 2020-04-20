@@ -1,9 +1,6 @@
 #![no_main]
 #![no_std]
 
-#[allow(unused_imports)]
-use panic_semihosting;
-
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
     fonts::{Font12x16, Text},
@@ -16,6 +13,7 @@ use nrf52832_hal::gpio::{p0, Level, Output, PushPull};
 use nrf52832_hal::prelude::*;
 use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
+use panic_rtt_target as _;
 use rtfm::app;
 use rtfm::cyccnt::U32Ext;
 use rtt_target::{rprintln, rtt_init_print};
