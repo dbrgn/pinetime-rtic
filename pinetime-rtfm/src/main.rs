@@ -80,9 +80,9 @@ const APP: () = {
 
         // Enable backlight
         let _backlight_low = gpio.p0_14.into_push_pull_output(Level::High);
-        let _backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
-        let mut backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
-        backlight_high.set_low().unwrap();
+        let mut backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
+        let _backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
+        backlight_mid.set_low().unwrap();
 
         // Set up SPI pins
         let spi_clk = gpio.p0_02.into_push_pull_output(Level::Low).degrade();
