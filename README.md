@@ -11,9 +11,12 @@ What works:
 - Bare-metal Rust with [nrf52-hal](https://github.com/nrf-rs/nrf-hal)
 - [RTFM](https://rtfm.rs/) for concurrency
 - [embedded-graphics](https://github.com/jamwaffles/embedded-graphics) for drawing onto the LCD
+- Detect button presses
+- Toggle through backlight brightness levels using button
 
 Planned:
 
+- Battery level indicator
 - A simple watch interface
 - Support for the step counter
 - Support for Bluetooth using [rubble](https://github.com/jonas-schievink/rubble),
