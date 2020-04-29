@@ -1,5 +1,5 @@
 #![no_main]
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
