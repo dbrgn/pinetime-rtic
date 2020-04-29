@@ -26,7 +26,6 @@ const LCD_H: u16 = 240;
 
 const FERRIS_W: u16 = 86;
 const FERRIS_H: u16 = 64;
-const FERRIS_Y_OFFSET: u16 = 80;
 
 const MARGIN: u16 = 10;
 
@@ -56,6 +55,8 @@ const APP: () = {
         ferris: ImageRawLE<'static, Rgb565>,
         #[init(10)]
         ferris_x_offset: i32,
+        #[init(80)]
+        ferris_y_offset: i32,
         #[init(2)]
         ferris_step_size: i32,
     }
@@ -163,12 +164,12 @@ const APP: () = {
         }
     }
 
-    #[task(resources = [lcd, ferris, ferris_x_offset, ferris_step_size], schedule = [write_ferris])]
+    #[task(resources = [lcd, ferris, ferris_x_offset, ferris_y_offset, ferris_step_size], schedule = [write_ferris])]
     fn write_ferris(cx: write_ferris::Context) {
         // Draw ferris
         Image::new(
             &cx.resources.ferris,
-            Point::new(*cx.resources.ferris_x_offset, FERRIS_Y_OFFSET as i32),
+            Point::new(*cx.resources.ferris_x_offset, *cx.resources.ferris_y_offset),
         )
         .draw(cx.resources.lcd)
         .unwrap();
@@ -182,11 +183,11 @@ const APP: () = {
             (
                 Point::new(
                     *cx.resources.ferris_x_offset - *cx.resources.ferris_step_size,
-                    FERRIS_Y_OFFSET as i32,
+                    *cx.resources.ferris_y_offset,
                 ),
                 Point::new(
                     *cx.resources.ferris_x_offset,
-                    (FERRIS_Y_OFFSET + FERRIS_H) as i32,
+                    *cx.resources.ferris_y_offset + (FERRIS_H as i32),
                 ),
             )
         } else {
@@ -194,13 +195,12 @@ const APP: () = {
             (
                 Point::new(
                     *cx.resources.ferris_x_offset + FERRIS_W as i32,
-                    FERRIS_Y_OFFSET as i32,
+                    *cx.resources.ferris_y_offset,
                 ),
                 Point::new(
-                    *cx.resources.ferris_x_offset
-                        + FERRIS_W as i32
+                    *cx.resources.ferris_x_offset + FERRIS_W as i32
                         - *cx.resources.ferris_step_size,
-                    (FERRIS_Y_OFFSET + FERRIS_H) as i32,
+                    *cx.resources.ferris_y_offset + (FERRIS_H as i32),
                 ),
             )
         };
