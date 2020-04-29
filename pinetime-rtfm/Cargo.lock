@@ -97,6 +97,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "debouncr"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "doc-comment 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "doc-comment"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "embedded-graphics"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -249,6 +262,7 @@ dependencies = [
  "cortex-m 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m-rt 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m-rtfm 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debouncr 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-graphics 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "embedded-hal 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "nrf52832-hal 0.9.0 (git+https://github.com/nrf-rs/nrf52-hal/)",
@@ -403,6 +417,8 @@ dependencies = [
 "checksum cortex-m-rt-macros 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)" = "4717562afbba06e760d34451919f5c3bf3ac15c7bb897e8b04862a7428378647"
 "checksum cortex-m-rtfm 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eaf0b9fd3f042cb3793d15daf3cea201b2f25c99b0b5b936a551bb6909c3ae5b"
 "checksum cortex-m-rtfm-macros 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c62092f6ff344e9b0adb748f0302ed69889ba2fae1fce446e3788d4726ea73bb"
+"checksum debouncr 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7aac9a92b2d575b05014b46dfe07da25d54662e7f1717c8bde82272937d75443"
+"checksum doc-comment 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 "checksum embedded-graphics 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "619ef7a30b5368c6350a9edb41c628499a0a77072d1bfa949044473d23734e3c"
 "checksum embedded-hal 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ee4908a155094da7723c2d60d617b820061e3b4efcc3d9e293d206a5a76c170b"
 "checksum fpa 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f074479d683e5a8fd0bf1251d0a5d91b0d9178b867b44962191ed0eaaf8d4009"

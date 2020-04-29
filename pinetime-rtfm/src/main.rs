@@ -1,6 +1,7 @@
 #![no_main]
 #![cfg_attr(not(test), no_std)]
 
+use debouncr::{debounce_6, Debouncer, Edge, Repeat6};
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
     fonts::{Font12x16, Text},
@@ -9,7 +10,7 @@ use embedded_graphics::{
     primitives::rectangle::Rectangle,
     style::{PrimitiveStyleBuilder, TextStyleBuilder},
 };
-use nrf52832_hal::gpio::{p0, Level, Output, PushPull};
+use nrf52832_hal::gpio::{p0, Floating, Input, Level, Output, Pin, PushPull};
 use nrf52832_hal::prelude::*;
 use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
@@ -44,6 +45,10 @@ const APP: () = {
             delay::TimerDelay,
         >,
 
+        // Button
+        button: Pin<Input<Floating>>,
+        button_debouncer: Debouncer<u8, Repeat6>,
+
         // Styles
         text_style: TextStyleBuilder<Rgb565, Font12x16>,
 
@@ -61,7 +66,7 @@ const APP: () = {
         ferris_step_size: i32,
     }
 
-    #[init(spawn = [write_counter, write_ferris])]
+    #[init(spawn = [write_counter, write_ferris, poll_button])]
     fn init(cx: init::Context) -> init::LateResources {
         let _p = cx.core;
         let dp = cx.device;
@@ -84,6 +89,10 @@ const APP: () = {
         let mut backlight_mid = gpio.p0_22.into_push_pull_output(Level::High);
         let _backlight_high = gpio.p0_23.into_push_pull_output(Level::High);
         backlight_mid.set_low().unwrap();
+
+        // Enable button
+        gpio.p0_15.into_push_pull_output(Level::High);
+        let button = gpio.p0_13.into_floating_input().degrade();
 
         // Set up SPI pins
         let spi_clk = gpio.p0_02.into_push_pull_output(Level::Low).degrade();
@@ -156,9 +165,12 @@ const APP: () = {
         // Schedule tasks immediately
         cx.spawn.write_counter().unwrap();
         cx.spawn.write_ferris().unwrap();
+        cx.spawn.poll_button().unwrap();
 
         init::LateResources {
             lcd,
+            button,
+            button_debouncer: debounce_6(),
             text_style,
             ferris,
         }
@@ -240,6 +252,28 @@ const APP: () = {
         cx.schedule
             .write_counter(cx.scheduled + CLOCK_FREQUENCY.cycles())
             .unwrap();
+    }
+
+    #[task(resources = [button, button_debouncer], spawn = [button_pressed], schedule = [poll_button])]
+    fn poll_button(cx: poll_button::Context) {
+        // Poll button
+        let pressed = cx.resources.button.is_high().unwrap();
+        let edge = cx.resources.button_debouncer.update(pressed);
+
+        // Dispatch event
+        if edge == Some(Edge::Rising) {
+            cx.spawn.button_pressed().unwrap();
+        }
+
+        // Re-schedule the timer interrupt in 2ms
+        cx.schedule
+            .poll_button(cx.scheduled + (CLOCK_FREQUENCY / 500).cycles())
+            .unwrap();
+    }
+
+    /// Called when button is pressed without bouncing for 12 (6 * 2) ms.
+    #[task]
+    fn button_pressed(cx: button_pressed::Context) {
     }
 
     // Provide unused interrupts to RTFM for its scheduling
