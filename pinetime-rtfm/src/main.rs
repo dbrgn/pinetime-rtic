@@ -20,6 +20,7 @@ use rtfm::cyccnt::U32Ext;
 use rtt_target::{rprintln, rtt_init_print};
 use st7789::{self, Orientation};
 
+mod backlight;
 mod delay;
 
 const LCD_W: u16 = 240;
@@ -34,80 +35,6 @@ const BACKGROUND_COLOR: Rgb565 = Rgb565::new(0, 0b000111, 0);
 
 const CLOCK_FREQUENCY: u32 = 64_000_000;
 
-/// Control the backlight.
-///
-/// There are three active-low backlight pins, each connected to a FET that
-/// toggles backlight power through a resistor.
-///
-/// - Low: 2.2 kΩ
-/// - Mid: 100 Ω
-/// - High: 30 Ω
-///
-/// Through combinations of these pins, 7 brightness levels (+ off) can be
-/// configured.
-pub struct Backlight {
-    low: Pin<Output<PushPull>>,
-    mid: Pin<Output<PushPull>>,
-    high: Pin<Output<PushPull>>,
-
-    /// The current brightness level (value between 0 and 7).
-    brightness: u8,
-}
-
-impl Backlight {
-    /// Initialize the backlight with the specified level (0–7).
-    pub fn init(
-        low: Pin<Output<PushPull>>,
-        mid: Pin<Output<PushPull>>,
-        high: Pin<Output<PushPull>>,
-        brightness: u8,
-    ) -> Self {
-        let mut backlight = Self { low, mid, high, brightness };
-        backlight.set(brightness);
-        backlight
-    }
-
-    /// Set the brightness level. Must be a value between 0 (off) and 7 (max
-    /// brightness). Higher values are clamped to 7.
-    pub fn set(&mut self, mut brightness: u8) {
-        if brightness > 7 {
-            brightness = 7;
-        }
-        rprintln!("Setting backlight brightness to {}", brightness);
-        if brightness & 0x01 > 0 {
-            self.low.set_low().unwrap();
-        } else {
-            self.low.set_high().unwrap();
-        }
-        if brightness & 0x02 > 0 {
-            self.mid.set_low().unwrap();
-        } else {
-            self.mid.set_high().unwrap();
-        }
-        if brightness & 0x04 > 0 {
-            self.high.set_low().unwrap();
-        } else {
-            self.high.set_high().unwrap();
-        }
-        self.brightness = brightness;
-    }
-
-    /// Turn off the backlight.
-    pub fn off(&mut self) {
-        self.set(0);
-    }
-
-    /// Increase backlight brightness.
-    pub fn brighter(&mut self) {
-        self.set(self.brightness + 1);
-    }
-
-    /// Decrease backlight brightness.
-    pub fn darker(&mut self) {
-        self.set(self.brightness - 1);
-    }
-}
-
 #[app(device = nrf52832_hal::pac, peripherals = true, monotonic = rtfm::cyccnt::CYCCNT)]
 const APP: () = {
     struct Resources {
@@ -118,7 +45,7 @@ const APP: () = {
             p0::P0_26<Output<PushPull>>,
             delay::TimerDelay,
         >,
-        backlight: Backlight,
+        backlight: backlight::Backlight,
 
         // Button
         button: Pin<Input<Floating>>,
@@ -160,7 +87,7 @@ const APP: () = {
         let gpio = hal::gpio::p0::Parts::new(dp.P0);
 
         // Enable backlight
-        let backlight = Backlight::init(
+        let backlight = backlight::Backlight::init(
             gpio.p0_14.into_push_pull_output(Level::High).degrade(),
             gpio.p0_22.into_push_pull_output(Level::High).degrade(),
             gpio.p0_23.into_push_pull_output(Level::High).degrade(),
@@ -315,6 +242,8 @@ const APP: () = {
 
     #[task(resources = [lcd, text_style, counter], schedule = [write_counter])]
     fn write_counter(cx: write_counter::Context) {
+        rprintln!("Counter is {}", cx.resources.counter);
+
         // Write counter to the display
         let mut buf = [0u8; 20];
         let text = cx.resources.counter.numtoa_str(10, &mut buf);
@@ -352,7 +281,7 @@ const APP: () = {
     /// Called when button is pressed without bouncing for 12 (6 * 2) ms.
     #[task(resources = [backlight])]
     fn button_pressed(cx: button_pressed::Context) {
-        if cx.resources.backlight.brightness < 7 {
+        if cx.resources.backlight.get_brightness() < 7 {
             cx.resources.backlight.brighter();
         } else {
             cx.resources.backlight.off();
