@@ -12,7 +12,7 @@ What works:
 - [RTFM](https://rtfm.rs/) for concurrency
 - [embedded-graphics](https://github.com/jamwaffles/embedded-graphics) for drawing onto the LCD
 - Detect button presses
-- Toggle through backlight brightness levels using button
+- Cycle through backlight brightness levels using button
 
 Planned:
 
