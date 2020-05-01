@@ -35,6 +35,20 @@ const BACKGROUND_COLOR: Rgb565 = Rgb565::new(0, 0b000111, 0);
 
 const CLOCK_FREQUENCY: u32 = 64_000_000;
 
+pub struct BatteryStatus {
+    charging: bool,
+    percent: u8,
+}
+
+impl BatteryStatus {
+    pub fn new() -> Self {
+        Self {
+            charging: false,
+            percent: 37,
+        }
+    }
+}
+
 #[app(device = nrf52832_hal::pac, peripherals = true, monotonic = rtfm::cyccnt::CYCCNT)]
 const APP: () = {
     struct Resources {
@@ -46,6 +60,9 @@ const APP: () = {
             delay::TimerDelay,
         >,
         backlight: backlight::Backlight,
+
+        // Battery
+        battery: BatteryStatus,
 
         // Button
         button: Pin<Input<Floating>>,
@@ -68,7 +85,7 @@ const APP: () = {
         ferris_step_size: i32,
     }
 
-    #[init(spawn = [write_counter, write_ferris, poll_button])]
+    #[init(spawn = [write_counter, write_ferris, poll_button, show_battery_status])]
     fn init(cx: init::Context) -> init::LateResources {
         let _p = cx.core;
         let dp = cx.device;
@@ -93,6 +110,9 @@ const APP: () = {
             gpio.p0_23.into_push_pull_output(Level::High).degrade(),
             1,
         );
+
+        // Battery status
+        let battery = BatteryStatus::new();
 
         // Enable button
         gpio.p0_15.into_push_pull_output(Level::High);
@@ -170,9 +190,11 @@ const APP: () = {
         cx.spawn.write_counter().unwrap();
         cx.spawn.write_ferris().unwrap();
         cx.spawn.poll_button().unwrap();
+        cx.spawn.show_battery_status().unwrap();
 
         init::LateResources {
             lcd,
+            battery,
             backlight,
             button,
             button_debouncer: debounce_6(),
@@ -286,6 +308,31 @@ const APP: () = {
         } else {
             cx.resources.backlight.off();
         }
+    }
+
+    #[task(resources = [battery, lcd, text_style])]
+    fn show_battery_status(cx: show_battery_status::Context) {
+        rprintln!(
+            "Battery status: {}% ({})",
+            cx.resources.battery.percent,
+            if cx.resources.battery.charging {
+                "charging"
+            } else {
+                "discharging"
+            },
+        );
+
+        // Show battery status in top right corner
+        let mut buf = [0u8; 4];
+        let bytes_written = cx.resources.battery.percent.numtoa(10, &mut buf[0..3]).len();
+        buf[3] = b'%';
+        let percent = core::str::from_utf8(&buf[3-bytes_written..]).unwrap();
+        let text = Text::new(percent, Point::zero()).into_styled(cx.resources.text_style.build());
+        let translation = Point::new(
+            LCD_W as i32 - text.size().width as i32 - MARGIN as i32,
+            MARGIN as i32,
+        );
+        text.translate(translation).draw(cx.resources.lcd).unwrap();
     }
 
     // Provide unused interrupts to RTFM for its scheduling
