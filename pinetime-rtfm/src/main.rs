@@ -1,6 +1,10 @@
 #![no_main]
 #![cfg_attr(not(test), no_std)]
 
+// Panic handler
+#[cfg(not(test))]
+use panic_rtt_target as _;
+
 use debouncr::{debounce_6, Debouncer, Edge, Repeat6};
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
@@ -14,15 +18,16 @@ use nrf52832_hal::gpio::{p0, Floating, Input, Level, Output, Pin, PushPull};
 use nrf52832_hal::prelude::*;
 use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
-use panic_rtt_target as _;
 use rtfm::app;
-use rtfm::cyccnt::U32Ext;
 use rtt_target::{rprintln, rtt_init_print};
 use st7789::{self, Orientation};
 
 mod backlight;
 mod battery;
 mod delay;
+mod monotonic_nrf52;
+
+use monotonic_nrf52::U32Ext;
 
 const LCD_W: u16 = 240;
 const LCD_H: u16 = 240;
@@ -34,9 +39,7 @@ const MARGIN: u16 = 10;
 
 const BACKGROUND_COLOR: Rgb565 = Rgb565::new(0, 0b000111, 0);
 
-const CLOCK_FREQUENCY: u32 = 64_000_000;
-
-#[app(device = nrf52832_hal::pac, peripherals = true, monotonic = rtfm::cyccnt::CYCCNT)]
+#[app(device = nrf52832_hal::pac, peripherals = true, monotonic = crate::monotonic_nrf52::Tim1)]
 const APP: () = {
     struct Resources {
         // LCD
@@ -81,6 +84,7 @@ const APP: () = {
         let pac::Peripherals {
             CLOCK,
             TIMER0,
+            TIMER1,
             P0,
             SPIM1,
             SAADC,
@@ -94,8 +98,11 @@ const APP: () = {
         // Set up clocks
         let _clocks = hal::clocks::Clocks::new(CLOCK);
 
-        // Set up delay timer
+        // Set up delay timer on TIMER0
         let delay = delay::TimerDelay::new(TIMER0);
+
+        // Set up monotonic timer on TIMER1
+        monotonic_nrf52::Tim1::initialize(TIMER1);
 
         // Set up GPIO peripheral
         let gpio = hal::gpio::p0::Parts::new(P0);
@@ -260,7 +267,7 @@ const APP: () = {
 
         // Re-schedule the timer interrupt
         cx.schedule
-            .write_ferris(cx.scheduled + (CLOCK_FREQUENCY / 25).cycles())
+            .write_ferris(cx.scheduled + 25.hz())
             .unwrap();
     }
 
@@ -280,9 +287,7 @@ const APP: () = {
         *cx.resources.counter += 1;
 
         // Re-schedule the timer interrupt
-        cx.schedule
-            .write_counter(cx.scheduled + CLOCK_FREQUENCY.cycles())
-            .unwrap();
+        cx.schedule.write_counter(cx.scheduled + 1.secs()).unwrap();
     }
 
     #[task(resources = [button, button_debouncer], spawn = [button_pressed], schedule = [poll_button])]
@@ -297,9 +302,7 @@ const APP: () = {
         }
 
         // Re-schedule the timer interrupt in 2ms
-        cx.schedule
-            .poll_button(cx.scheduled + (CLOCK_FREQUENCY / 500).cycles())
-            .unwrap();
+        cx.schedule.poll_button(cx.scheduled + 2.millis()).unwrap();
     }
 
     /// Called when button is pressed without bouncing for 12 (6 * 2) ms.
@@ -326,7 +329,7 @@ const APP: () = {
 
         // Re-schedule the timer interrupt in 1s
         cx.schedule
-            .update_battery_status(cx.scheduled + (CLOCK_FREQUENCY * 1).cycles())
+            .update_battery_status(cx.scheduled + 1.secs())
             .unwrap();
     }
 
