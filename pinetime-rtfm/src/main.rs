@@ -77,9 +77,6 @@ const APP: () = {
 
     #[init(spawn = [write_counter, write_ferris, poll_button, show_battery_status, update_battery_status])]
     fn init(cx: init::Context) -> init::LateResources {
-        // Core peripherals
-        let _p = cx.core;
-
         // Destructure device peripherals
         let pac::Peripherals {
             CLOCK,
@@ -95,8 +92,10 @@ const APP: () = {
         rtt_init_print!();
         rprintln!("Initializing…");
 
-        // Set up clocks
-        let _clocks = hal::clocks::Clocks::new(CLOCK);
+        // Set up clocks. On reset, the high frequency clock is already used,
+        // but we also need to switch to the external HF oscillator. This is
+        // needed for Bluetooth to work.
+        let _clocks = hal::clocks::Clocks::new(CLOCK).enable_ext_hfosc();
 
         // Set up delay timer on TIMER0
         let delay = delay::TimerDelay::new(TIMER0);
@@ -266,9 +265,7 @@ const APP: () = {
         *cx.resources.ferris_x_offset += *cx.resources.ferris_step_size;
 
         // Re-schedule the timer interrupt
-        cx.schedule
-            .write_ferris(cx.scheduled + 25.hz())
-            .unwrap();
+        cx.schedule.write_ferris(cx.scheduled + 25.hz()).unwrap();
     }
 
     #[task(resources = [lcd, text_style, counter], schedule = [write_counter])]
