@@ -14,12 +14,14 @@ What works:
 - Detect button presses
 - Cycle through backlight brightness levels using button
 - Show battery charge status and voltage
+- Send BLE advertisement frames using the pure-Rust
+  [rubble](https://github.com/jonas-schievink/rubble) stack
 
 Planned:
 
 - A simple watch interface
 - Support for the step counter
-- Support for Bluetooth using [rubble](https://github.com/jonas-schievink/rubble),
+- Better Bluetooth support
   an experimental pure-rust BLE stack
 
 ## Development
