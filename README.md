@@ -4,7 +4,7 @@ Target MCU: nRF52832 (xxAA)
 
 Current status: PoC
 
-![img](ferris.gif)
+![img](demo.gif)
 
 What works:
 
