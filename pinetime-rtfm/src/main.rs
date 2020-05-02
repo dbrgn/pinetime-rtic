@@ -5,7 +5,6 @@
 #[cfg(not(test))]
 use panic_rtt_target as _;
 
-use byteorder::{ByteOrder, LittleEndian};
 use debouncr::{debounce_6, Debouncer, Edge, Repeat6};
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
@@ -16,7 +15,6 @@ use embedded_graphics::{
     style::{PrimitiveStyleBuilder, TextStyleBuilder},
 };
 use nrf52832_hal::gpio::{p0, Floating, Input, Level, Output, Pin, PushPull};
-use nrf52832_hal::pac::ficr::deviceaddrtype::DEVICEADDRTYPE_A;
 use nrf52832_hal::prelude::*;
 use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
@@ -27,11 +25,12 @@ use rubble::gatt::BatteryServiceAttrs;
 use rubble::l2cap::{BleChannelMap, L2CAPState};
 use rubble::link::ad_structure::AdStructure;
 use rubble::link::queue::{PacketQueue, SimpleQueue};
-use rubble::link::{AddressKind, DeviceAddress, LinkLayer, Responder, MIN_PDU_BUF};
+use rubble::link::{LinkLayer, Responder, MIN_PDU_BUF};
 use rubble::security::NoSecurity;
 use rubble::time::{Duration as RubbleDuration, Timer};
 use rubble_nrf5x::radio::{BleRadio, PacketBuffer};
 use rubble_nrf5x::timer::BleTimer;
+use rubble_nrf5x::utils::get_device_address;
 use st7789::{self, Orientation};
 
 mod backlight;
@@ -169,7 +168,7 @@ const APP: () = {
         let button = gpio.p0_13.into_floating_input().degrade();
 
         // Get bluetooth device address
-        let device_address = get_device_address(&FICR);
+        let device_address = get_device_address();
         rprintln!("Bluetooth device address: {:?}", device_address);
 
         // Initialize radio
@@ -505,23 +504,3 @@ const APP: () = {
         fn SWI5_EGU5();
     }
 };
-
-fn get_device_address(ficr: &pac::FICR) -> DeviceAddress {
-    // The FICR (Factory Information Configuration Registers) contain
-    // information about the device address.
-
-    // Address bytes
-    let mut devaddr = [0u8; 6];
-    let devaddr_lo = ficr.deviceaddr[0].read().bits();
-    let devaddr_hi = ficr.deviceaddr[1].read().bits() as u16;
-    LittleEndian::write_u32(&mut devaddr[..4], devaddr_lo);
-    LittleEndian::write_u16(&mut devaddr[4..], devaddr_hi);
-
-    // Address type
-    let devaddr_type = match ficr.deviceaddrtype.read().deviceaddrtype().variant() {
-        DEVICEADDRTYPE_A::PUBLIC => AddressKind::Public,
-        DEVICEADDRTYPE_A::RANDOM => AddressKind::Random,
-    };
-
-    DeviceAddress::new(devaddr, devaddr_type)
-}
