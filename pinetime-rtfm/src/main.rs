@@ -21,6 +21,7 @@ use rtt_target::{rprintln, rtt_init_print};
 use st7789::{self, Orientation};
 
 mod backlight;
+mod battery;
 mod delay;
 
 const LCD_W: u16 = 240;
@@ -35,20 +36,6 @@ const BACKGROUND_COLOR: Rgb565 = Rgb565::new(0, 0b000111, 0);
 
 const CLOCK_FREQUENCY: u32 = 64_000_000;
 
-pub struct BatteryStatus {
-    charging: bool,
-    percent: u8,
-}
-
-impl BatteryStatus {
-    pub fn new() -> Self {
-        Self {
-            charging: false,
-            percent: 37,
-        }
-    }
-}
-
 #[app(device = nrf52832_hal::pac, peripherals = true, monotonic = rtfm::cyccnt::CYCCNT)]
 const APP: () = {
     struct Resources {
@@ -62,7 +49,7 @@ const APP: () = {
         backlight: backlight::Backlight,
 
         // Battery
-        battery: BatteryStatus,
+        battery: battery::BatteryStatus,
 
         // Button
         button: Pin<Input<Floating>>,
@@ -85,7 +72,7 @@ const APP: () = {
         ferris_step_size: i32,
     }
 
-    #[init(spawn = [write_counter, write_ferris, poll_button, show_battery_status])]
+    #[init(spawn = [write_counter, write_ferris, poll_button, show_battery_status, update_battery_status])]
     fn init(cx: init::Context) -> init::LateResources {
         let _p = cx.core;
         let dp = cx.device;
@@ -112,7 +99,7 @@ const APP: () = {
         );
 
         // Battery status
-        let battery = BatteryStatus::new();
+        let battery = battery::BatteryStatus::init(gpio.p0_12.into_floating_input().degrade());
 
         // Enable button
         gpio.p0_15.into_push_pull_output(Level::High);
@@ -191,6 +178,7 @@ const APP: () = {
         cx.spawn.write_ferris().unwrap();
         cx.spawn.poll_button().unwrap();
         cx.spawn.show_battery_status().unwrap();
+        cx.spawn.update_battery_status().unwrap();
 
         init::LateResources {
             lcd,
@@ -310,24 +298,44 @@ const APP: () = {
         }
     }
 
+    /// Fetch the battery status from the hardware. Update the text if
+    /// something changed.
+    #[task(resources = [battery], spawn = [show_battery_status], schedule = [update_battery_status])]
+    fn update_battery_status(cx: update_battery_status::Context) {
+        rprintln!("Update battery status");
+
+        let changed = cx.resources.battery.update();
+        if changed {
+            rprintln!("Battery status changed");
+            cx.spawn.show_battery_status().unwrap();
+        }
+
+        // Re-schedule the timer interrupt in 10s
+        cx.schedule
+            .update_battery_status(cx.scheduled + (CLOCK_FREQUENCY * 10).cycles())
+            .unwrap();
+    }
+
+    /// Show the battery status on the LCD.
     #[task(resources = [battery, lcd, text_style])]
     fn show_battery_status(cx: show_battery_status::Context) {
+        let percent = cx.resources.battery.percent();
+        let charging = cx.resources.battery.is_charging();
+
         rprintln!(
             "Battery status: {}% ({})",
-            cx.resources.battery.percent,
-            if cx.resources.battery.charging {
-                "charging"
-            } else {
-                "discharging"
-            },
+            percent,
+            if charging { "charging" } else { "discharging" },
         );
 
         // Show battery status in top right corner
-        let mut buf = [0u8; 4];
-        let bytes_written = cx.resources.battery.percent.numtoa(10, &mut buf[0..3]).len();
+        let mut buf = [0u8; 5];
+        let bytes_written = percent.numtoa(10, &mut buf[0..3]).len();
         buf[3] = b'%';
-        let percent = core::str::from_utf8(&buf[3-bytes_written..]).unwrap();
-        let text = Text::new(percent, Point::zero()).into_styled(cx.resources.text_style.build());
+        buf[4] = if charging { b'C' } else { b'D' };
+        let percent_str = core::str::from_utf8(&buf[3 - bytes_written..]).unwrap();
+        let text =
+            Text::new(percent_str, Point::zero()).into_styled(cx.resources.text_style.build());
         let translation = Point::new(
             LCD_W as i32 - text.size().width as i32 - MARGIN as i32,
             MARGIN as i32,
