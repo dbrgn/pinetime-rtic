@@ -32,6 +32,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitflags"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "byteorder"
 version = "1.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -259,6 +264,7 @@ dependencies = [
 name = "pinetime-rtfm"
 version = "0.1.0"
 dependencies = [
+ "byteorder 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m-rt 0.6.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "cortex-m-rtfm 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -269,6 +275,8 @@ dependencies = [
  "numtoa 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "panic-rtt-target 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rtt-target 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rubble 0.0.3 (git+https://github.com/jonas-schievink/rubble)",
+ "rubble-nrf5x 0.0.3 (git+https://github.com/jonas-schievink/rubble)",
  "st7789 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -321,6 +329,26 @@ dependencies = [
  "cortex-m 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ufmt-write 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "vcell 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rubble"
+version = "0.0.3"
+source = "git+https://github.com/jonas-schievink/rubble#981a85c501aa3c3231c5467a0ddbdb259f3c2595"
+dependencies = [
+ "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "byteorder 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "heapless 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "rubble-nrf5x"
+version = "0.0.3"
+source = "git+https://github.com/jonas-schievink/rubble#981a85c501aa3c3231c5467a0ddbdb259f3c2595"
+dependencies = [
+ "nrf52832-hal 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rubble 0.0.3 (git+https://github.com/jonas-schievink/rubble)",
 ]
 
 [[package]]
@@ -388,6 +416,11 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "uuid"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "vcell"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -410,6 +443,7 @@ dependencies = [
 "checksum as-slice 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "37dfb65bc03b2bc85ee827004f14a6817e04160e3b1a28931986a666a9290e70"
 "checksum autocfg 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 "checksum bare-metal 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "5deb64efa5bd81e31fcd1938615a6d98c82eafcbcd787162b6f63b91d6bac5b3"
+"checksum bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 "checksum byteorder 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 "checksum cast 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4b9434b9a5aa1450faa3f9cb14ea0e8c53bb5d2b3c1bfd1ab4fc03e9f33fbfb0"
 "checksum cortex-m 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2954942fbbdd49996704e6f048ce57567c3e1a4e2dc59b41ae9fde06a01fc763"
@@ -442,6 +476,8 @@ dependencies = [
 "checksum rtfm-core 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9ec893edb2aa5b70320b94896ffea22a7ebb1cf3f942bb67cd5b60a865a63493"
 "checksum rtfm-syntax 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4455e23c34df3d66454e7e218a4d76a7f83321d04a806be614463341cec4116e"
 "checksum rtt-target 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "26ebda2070a2dd2f5d1bba0c427055f475bb011ca8215add472b6e6ba6b7265c"
+"checksum rubble 0.0.3 (git+https://github.com/jonas-schievink/rubble)" = "<none>"
+"checksum rubble-nrf5x 0.0.3 (git+https://github.com/jonas-schievink/rubble)" = "<none>"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
 "checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
@@ -451,6 +487,7 @@ dependencies = [
 "checksum typenum 1.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
 "checksum ufmt-write 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e87a2ed6b42ec5e28cc3b94c09982969e9227600b2e3dcbc1db927a84c06bd69"
 "checksum unicode-xid 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
+"checksum uuid 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9fde2f6a4bea1d6e007c4ad38c6839fa71cbb63b6dbf5b595aa38dc9b1093c11"
 "checksum vcell 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "876e32dcadfe563a4289e994f7cb391197f362b6315dc45e8ba4aa6f564a4b3c"
 "checksum void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 "checksum volatile-register 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0d67cb4616d99b940db1d6bd28844ff97108b498a6ca850e5b6191a532063286"

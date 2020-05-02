@@ -5,6 +5,7 @@
 #[cfg(not(test))]
 use panic_rtt_target as _;
 
+use byteorder::{ByteOrder, LittleEndian};
 use debouncr::{debounce_6, Debouncer, Edge, Repeat6};
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
@@ -15,11 +16,22 @@ use embedded_graphics::{
     style::{PrimitiveStyleBuilder, TextStyleBuilder},
 };
 use nrf52832_hal::gpio::{p0, Floating, Input, Level, Output, Pin, PushPull};
+use nrf52832_hal::pac::ficr::deviceaddrtype::DEVICEADDRTYPE_A;
 use nrf52832_hal::prelude::*;
 use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
 use rtfm::app;
 use rtt_target::{rprintln, rtt_init_print};
+use rubble::config::Config;
+use rubble::gatt::BatteryServiceAttrs;
+use rubble::l2cap::{BleChannelMap, L2CAPState};
+use rubble::link::ad_structure::AdStructure;
+use rubble::link::queue::{PacketQueue, SimpleQueue};
+use rubble::link::{AddressKind, DeviceAddress, LinkLayer, Responder, MIN_PDU_BUF};
+use rubble::security::NoSecurity;
+use rubble::time::{Duration as RubbleDuration, Timer};
+use rubble_nrf5x::radio::{BleRadio, PacketBuffer};
+use rubble_nrf5x::timer::BleTimer;
 use st7789::{self, Orientation};
 
 mod backlight;
@@ -38,6 +50,15 @@ const FERRIS_H: u16 = 64;
 const MARGIN: u16 = 10;
 
 const BACKGROUND_COLOR: Rgb565 = Rgb565::new(0, 0b000111, 0);
+
+pub struct AppConfig {}
+
+impl Config for AppConfig {
+    type Timer = BleTimer<hal::target::TIMER2>;
+    type Transmitter = BleRadio;
+    type ChannelMapper = BleChannelMap<BatteryServiceAttrs, NoSecurity>;
+    type PacketQueue = &'static mut SimpleQueue;
+}
 
 #[app(device = nrf52832_hal::pac, peripherals = true, monotonic = crate::monotonic_nrf52::Tim1)]
 const APP: () = {
@@ -73,18 +94,37 @@ const APP: () = {
         ferris_y_offset: i32,
         #[init(2)]
         ferris_step_size: i32,
+
+        // BLE
+        #[init([0; MIN_PDU_BUF])]
+        ble_tx_buf: PacketBuffer,
+        #[init([0; MIN_PDU_BUF])]
+        ble_rx_buf: PacketBuffer,
+        #[init(SimpleQueue::new())]
+        tx_queue: SimpleQueue,
+        #[init(SimpleQueue::new())]
+        rx_queue: SimpleQueue,
+        radio: BleRadio,
+        ble_ll: LinkLayer<AppConfig>,
+        ble_r: Responder<AppConfig>,
     }
 
-    #[init(spawn = [write_counter, write_ferris, poll_button, show_battery_status, update_battery_status])]
+    #[init(
+        resources = [ble_tx_buf, ble_rx_buf, tx_queue, rx_queue],
+        spawn = [write_counter, write_ferris, poll_button, show_battery_status, update_battery_status],
+    )]
     fn init(cx: init::Context) -> init::LateResources {
         // Destructure device peripherals
         let pac::Peripherals {
             CLOCK,
+            FICR,
+            P0,
+            RADIO,
+            SAADC,
+            SPIM1,
             TIMER0,
             TIMER1,
-            P0,
-            SPIM1,
-            SAADC,
+            TIMER2,
             ..
         } = cx.device;
 
@@ -97,11 +137,14 @@ const APP: () = {
         // needed for Bluetooth to work.
         let _clocks = hal::clocks::Clocks::new(CLOCK).enable_ext_hfosc();
 
-        // Set up delay timer on TIMER0
+        // Set up delay provider on TIMER0
         let delay = delay::TimerDelay::new(TIMER0);
 
-        // Set up monotonic timer on TIMER1
+        // Initialize monotonic timer on TIMER1 (for RTFM)
         monotonic_nrf52::Tim1::initialize(TIMER1);
+
+        // Initialize BLE timer on TIMER2
+        let ble_timer = BleTimer::init(TIMER2);
 
         // Set up GPIO peripheral
         let gpio = hal::gpio::p0::Parts::new(P0);
@@ -124,6 +167,42 @@ const APP: () = {
         // Enable button
         gpio.p0_15.into_push_pull_output(Level::High);
         let button = gpio.p0_13.into_floating_input().degrade();
+
+        // Get bluetooth device address
+        let device_address = get_device_address(&FICR);
+        rprintln!("Bluetooth device address: {:?}", device_address);
+
+        // Initialize radio
+        let mut radio = BleRadio::new(
+            RADIO,
+            &FICR,
+            cx.resources.ble_tx_buf,
+            cx.resources.ble_rx_buf,
+        );
+
+        // Create bluetooth TX/RX queues
+        let (tx, tx_cons) = cx.resources.tx_queue.split();
+        let (rx_prod, rx) = cx.resources.rx_queue.split();
+
+        // Create the actual BLE stack objects
+        let mut ble_ll = LinkLayer::<AppConfig>::new(device_address, ble_timer);
+        let ble_r = Responder::<AppConfig>::new(
+            tx,
+            rx,
+            L2CAPState::new(BleChannelMap::with_attributes(BatteryServiceAttrs::new())),
+        );
+
+        // Send advertisement and set up regular interrupt
+        let next_update = ble_ll
+            .start_advertise(
+                RubbleDuration::from_millis(200),
+                &[AdStructure::CompleteLocalName("Rusty PineTime")],
+                &mut radio,
+                tx_cons,
+                rx_prod,
+            )
+            .unwrap();
+        ble_ll.timer().configure_interrupt(next_update);
 
         // Set up SPI pins
         let spi_clk = gpio.p0_02.into_push_pull_output(Level::Low).degrade();
@@ -208,6 +287,63 @@ const APP: () = {
             button_debouncer: debounce_6(),
             text_style,
             ferris,
+
+            radio,
+            ble_ll,
+            ble_r,
+        }
+    }
+
+    /// Hook up the RADIO interrupt to the Rubble BLE stack.
+    #[task(binds = RADIO, resources = [radio, ble_ll], spawn = [ble_worker], priority = 3)]
+    fn radio(cx: radio::Context) {
+        let ble_ll: &mut LinkLayer<AppConfig> = cx.resources.ble_ll;
+        if let Some(cmd) = cx
+            .resources
+            .radio
+            .recv_interrupt(ble_ll.timer().now(), ble_ll)
+        {
+            cx.resources.radio.configure_receiver(cmd.radio);
+            ble_ll.timer().configure_interrupt(cmd.next_update);
+
+            if cmd.queued_work {
+                // If there's any lower-priority work to be done, ensure that happens.
+                // If we fail to spawn the task, it's already scheduled.
+                cx.spawn.ble_worker().ok();
+            }
+        }
+    }
+
+    /// Hook up the TIMER2 interrupt to the Rubble BLE stack.
+    #[task(binds = TIMER2, resources = [radio, ble_ll], spawn = [ble_worker], priority = 3)]
+    fn timer2(cx: timer2::Context) {
+        let timer = cx.resources.ble_ll.timer();
+        if !timer.is_interrupt_pending() {
+            return;
+        }
+        timer.clear_interrupt();
+
+        let cmd = cx.resources.ble_ll.update_timer(&mut *cx.resources.radio);
+        cx.resources.radio.configure_receiver(cmd.radio);
+
+        cx.resources
+            .ble_ll
+            .timer()
+            .configure_interrupt(cmd.next_update);
+
+        if cmd.queued_work {
+            // If there's any lower-priority work to be done, ensure that happens.
+            // If we fail to spawn the task, it's already scheduled.
+            cx.spawn.ble_worker().ok();
+        }
+    }
+
+    /// Lower-priority task spawned from RADIO and TIMER2 interrupts.
+    #[task(resources = [ble_r], priority = 2)]
+    fn ble_worker(cx: ble_worker::Context) {
+        // Fully drain the packet queue
+        while cx.resources.ble_r.has_work() {
+            cx.resources.ble_r.process_one().unwrap();
         }
     }
 
@@ -369,3 +505,23 @@ const APP: () = {
         fn SWI5_EGU5();
     }
 };
+
+fn get_device_address(ficr: &pac::FICR) -> DeviceAddress {
+    // The FICR (Factory Information Configuration Registers) contain
+    // information about the device address.
+
+    // Address bytes
+    let mut devaddr = [0u8; 6];
+    let devaddr_lo = ficr.deviceaddr[0].read().bits();
+    let devaddr_hi = ficr.deviceaddr[1].read().bits() as u16;
+    LittleEndian::write_u32(&mut devaddr[..4], devaddr_lo);
+    LittleEndian::write_u16(&mut devaddr[4..], devaddr_hi);
+
+    // Address type
+    let devaddr_type = match ficr.deviceaddrtype.read().deviceaddrtype().variant() {
+        DEVICEADDRTYPE_A::PUBLIC => AddressKind::Public,
+        DEVICEADDRTYPE_A::RANDOM => AddressKind::Random,
+    };
+
+    DeviceAddress::new(devaddr, devaddr_type)
+}

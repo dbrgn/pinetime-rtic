@@ -5,6 +5,7 @@ authors = ["Danilo Bargen <mail@dbrgn.ch>"]
 edition = "2018"
 
 [dependencies]
+byteorder = { version = "1", default-features = false }
 cortex-m = "0.6"
 cortex-m-rt = "0.6"
 cortex-m-rtfm = "0.5.1"
@@ -15,6 +16,8 @@ nrf52832-hal = { version = "0.10", features = ["rt", "xxAA-package"], default-fe
 numtoa = "0.2"
 panic-rtt-target = { version = "0.1", features = ["cortex-m"] }
 rtt-target = { version = "0.1", features = ["cortex-m"] }
+rubble = { git = "https://github.com/jonas-schievink/rubble" }
+rubble-nrf5x = { git = "https://github.com/jonas-schievink/rubble", features = ["52832"], default-features = false }
 st7789 = { version = "0.2", features = ["graphics", "batch", "buffer"], default-features = false }
 
 [profile.dev]
