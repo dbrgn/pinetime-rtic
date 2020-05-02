@@ -74,21 +74,31 @@ const APP: () = {
 
     #[init(spawn = [write_counter, write_ferris, poll_button, show_battery_status, update_battery_status])]
     fn init(cx: init::Context) -> init::LateResources {
+        // Core peripherals
         let _p = cx.core;
-        let dp = cx.device;
+
+        // Destructure device peripherals
+        let pac::Peripherals {
+            CLOCK,
+            TIMER0,
+            P0,
+            SPIM1,
+            SAADC,
+            ..
+        } = cx.device;
 
         // Init RTT
         rtt_init_print!();
         rprintln!("Initializing…");
 
         // Set up clocks
-        let _clocks = hal::clocks::Clocks::new(dp.CLOCK);
+        let _clocks = hal::clocks::Clocks::new(CLOCK);
 
         // Set up delay timer
-        let delay = delay::TimerDelay::new(dp.TIMER0);
+        let delay = delay::TimerDelay::new(TIMER0);
 
         // Set up GPIO peripheral
-        let gpio = hal::gpio::p0::Parts::new(dp.P0);
+        let gpio = hal::gpio::p0::Parts::new(P0);
 
         // Enable backlight
         let backlight = backlight::Backlight::init(
@@ -99,7 +109,11 @@ const APP: () = {
         );
 
         // Battery status
-        let battery = battery::BatteryStatus::init(gpio.p0_12.into_floating_input().degrade());
+        let battery = battery::BatteryStatus::init(
+            gpio.p0_12.into_floating_input(),
+            gpio.p0_31.into_floating_input(),
+            SAADC,
+        );
 
         // Enable button
         gpio.p0_15.into_push_pull_output(Level::High);
@@ -125,7 +139,7 @@ const APP: () = {
 
         // Initialize SPI
         let spi = hal::Spim::new(
-            dp.SPIM1,
+            SPIM1,
             spi_pins,
             // Use SPI at 8MHz (the fastest clock available on the nRF52832)
             // because otherwise refreshing will be super slow.
@@ -161,7 +175,7 @@ const APP: () = {
             .background_color(BACKGROUND_COLOR);
 
         // Draw text
-        Text::new("Hello world!", Point::new(10, 10))
+        Text::new("PineTime", Point::new(10, 10))
             .into_styled(text_style.build())
             .draw(&mut lcd)
             .unwrap();
@@ -310,32 +324,34 @@ const APP: () = {
             cx.spawn.show_battery_status().unwrap();
         }
 
-        // Re-schedule the timer interrupt in 10s
+        // Re-schedule the timer interrupt in 1s
         cx.schedule
-            .update_battery_status(cx.scheduled + (CLOCK_FREQUENCY * 10).cycles())
+            .update_battery_status(cx.scheduled + (CLOCK_FREQUENCY * 1).cycles())
             .unwrap();
     }
 
     /// Show the battery status on the LCD.
     #[task(resources = [battery, lcd, text_style])]
     fn show_battery_status(cx: show_battery_status::Context) {
-        let percent = cx.resources.battery.percent();
+        let voltage = cx.resources.battery.voltage();
         let charging = cx.resources.battery.is_charging();
 
         rprintln!(
-            "Battery status: {}% ({})",
-            percent,
+            "Battery status: {} ({})",
+            voltage,
             if charging { "charging" } else { "discharging" },
         );
 
         // Show battery status in top right corner
-        let mut buf = [0u8; 5];
-        let bytes_written = percent.numtoa(10, &mut buf[0..3]).len();
-        buf[3] = b'%';
-        buf[4] = if charging { b'C' } else { b'D' };
-        let percent_str = core::str::from_utf8(&buf[3 - bytes_written..]).unwrap();
-        let text =
-            Text::new(percent_str, Point::zero()).into_styled(cx.resources.text_style.build());
+        let mut buf = [0u8; 6];
+        (voltage / 10).numtoa(10, &mut buf[0..1]);
+        buf[1] = b'.';
+        (voltage % 10).numtoa(10, &mut buf[2..3]);
+        buf[3] = b'V';
+        buf[4] = b'/';
+        buf[5] = if charging { b'C' } else { b'D' };
+        let status = core::str::from_utf8(&buf).unwrap();
+        let text = Text::new(status, Point::zero()).into_styled(cx.resources.text_style.build());
         let translation = Point::new(
             LCD_W as i32 - text.size().width as i32 - MARGIN as i32,
             MARGIN as i32,

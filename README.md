@@ -13,10 +13,10 @@ What works:
 - [embedded-graphics](https://github.com/jamwaffles/embedded-graphics) for drawing onto the LCD
 - Detect button presses
 - Cycle through backlight brightness levels using button
+- Show battery charge status and voltage
 
 Planned:
 
-- Battery level indicator
 - A simple watch interface
 - Support for the step counter
 - Support for Bluetooth using [rubble](https://github.com/jonas-schievink/rubble),
