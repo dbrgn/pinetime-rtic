@@ -1,7 +1,7 @@
 //! Using NRF52 as monotonic timer
 //!
 //! Source:
-//! https://github.com/rtfm-rs/rtfm-examples/blob/master/rtfm_v5/monotonic_nrf52/src/monotonic_nrf52.rs
+//! https://github.com/rtic-rs/rtic-examples/blob/master/rtic_v5/monotonic_nrf52/src/monotonic_nrf52.rs
 
 use core::u32;
 use core::{
@@ -10,7 +10,7 @@ use core::{
     fmt, ops,
 };
 use nrf52832_hal::target;
-use rtfm::Monotonic;
+use rtic::Monotonic;
 
 /// A measurement of the counter. Opaque and useful only with `Duration`
 ///
@@ -143,7 +143,7 @@ impl Duration {
     }
 }
 
-// Used internally by RTFM to convert the duration into a known type
+// Used internally by RTIC to convert the duration into a known type
 impl TryInto<u32> for Duration {
     type Error = Infallible;
 
@@ -238,7 +238,7 @@ impl U32Ext for u32 {
     }
 }
 
-/// Implementor of the `rtfm::Monotonic` traits and used to consume the timer
+/// Implementor of the `rtic::Monotonic` traits and used to consume the timer
 /// to not allow for erroneous configuration.
 ///
 /// The timer must be initialized through `initialize()`.
@@ -286,15 +286,15 @@ impl Tim1 {
     }
 }
 
-impl rtfm::Monotonic for Tim1 {
+impl rtic::Monotonic for Tim1 {
     type Instant = Instant;
 
     /// The ratio between the system timer (SysTick) frequency and this clock
     /// frequency, i.e. `Monotonic clock * Fraction = System clock`.
-    fn ratio() -> rtfm::Fraction {
+    fn ratio() -> rtic::Fraction {
         // The TIM1 timer is being initialized with 1 MHz. If we multiply by 64,
         // we get the sys clock of 64 MHz.
-        rtfm::Fraction {
+        rtic::Fraction {
             numerator: 64,
             denominator: 1,
         }

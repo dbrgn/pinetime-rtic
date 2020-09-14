@@ -1,6 +1,6 @@
 //! Delay implementation using regular timers.
 //!
-//! This is done because RTFM takes ownership of SYST, and the nrf52-hal by
+//! This is done because RTIC takes ownership of SYST, and the nrf52-hal by
 //! default also wants SYST for its Delay implementation.
 
 use embedded_hal::blocking::delay::DelayUs;

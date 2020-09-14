@@ -1,4 +1,4 @@
-# RTFM on PineTime
+# Rust/RTIC on PineTime
 
 Target MCU: nRF52832 (xxAA)
 
@@ -9,7 +9,7 @@ Current status: PoC
 What works:
 
 - Bare-metal Rust with [nrf52-hal](https://github.com/nrf-rs/nrf-hal)
-- [RTFM](https://rtfm.rs/) for concurrency
+- [RTIC](https://rtic.rs/) for concurrency
 - [embedded-graphics](https://github.com/jamwaffles/embedded-graphics) for drawing onto the LCD
 - Detect button presses
 - Cycle through backlight brightness levels using button

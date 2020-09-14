@@ -18,7 +18,7 @@ use nrf52832_hal::gpio::{p0, Floating, Input, Level, Output, Pin, PushPull};
 use nrf52832_hal::prelude::*;
 use nrf52832_hal::{self as hal, pac};
 use numtoa::NumToA;
-use rtfm::app;
+use rtic::app;
 use rtt_target::{rprintln, rtt_init_print};
 use rubble::config::Config;
 use rubble::gatt::BatteryServiceAttrs;
@@ -139,7 +139,7 @@ const APP: () = {
         // Set up delay provider on TIMER0
         let delay = delay::TimerDelay::new(TIMER0);
 
-        // Initialize monotonic timer on TIMER1 (for RTFM)
+        // Initialize monotonic timer on TIMER1 (for RTIC)
         monotonic_nrf52::Tim1::initialize(TIMER1);
 
         // Initialize BLE timer on TIMER2
@@ -494,7 +494,7 @@ const APP: () = {
         text.translate(translation).draw(cx.resources.lcd).unwrap();
     }
 
-    // Provide unused interrupts to RTFM for its scheduling
+    // Provide unused interrupts to RTIC for its scheduling
     extern "C" {
         fn SWI0_EGU0();
         fn SWI1_EGU1();

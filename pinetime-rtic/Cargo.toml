@@ -1,5 +1,5 @@
 [package]
-name = "pinetime-rtfm"
+name = "pinetime-rtic"
 version = "0.1.0"
 authors = ["Danilo Bargen <mail@dbrgn.ch>"]
 edition = "2018"
@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 cortex-m = "0.6"
 cortex-m-rt = "0.6"
-cortex-m-rtfm = "0.5.1"
+cortex-m-rtic = "0.5.1"
 debouncr = "0.1.2"
 embedded-graphics = "0.6"
 embedded-hal = "0.2"
