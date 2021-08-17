@@ -3,6 +3,9 @@ name = "pinetime-rtic"
 version = "0.1.0"
 authors = ["Danilo Bargen <mail@dbrgn.ch>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/dbrgn/pinetime-rtic/"
 
 [dependencies]
 cortex-m = "0.6"
